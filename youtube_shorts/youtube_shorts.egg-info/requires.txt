@@ -1,0 +1,8 @@
+ollama
+gtts
+pydub
+pillow
+google-auth
+google-auth-oauthlib
+google-api-python-client
+pyyaml

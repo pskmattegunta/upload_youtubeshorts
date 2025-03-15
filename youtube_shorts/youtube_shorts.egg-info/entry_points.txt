@@ -1,0 +1,2 @@
+[console_scripts]
+youtube-shorts = youtube_shorts.main:main

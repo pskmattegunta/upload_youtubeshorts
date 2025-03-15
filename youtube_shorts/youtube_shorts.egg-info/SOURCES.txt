@@ -1,0 +1,7 @@
+setup.py
+youtube_shorts.egg-info/PKG-INFO
+youtube_shorts.egg-info/SOURCES.txt
+youtube_shorts.egg-info/dependency_links.txt
+youtube_shorts.egg-info/entry_points.txt
+youtube_shorts.egg-info/requires.txt
+youtube_shorts.egg-info/top_level.txt

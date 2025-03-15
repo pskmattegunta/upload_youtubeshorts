@@ -1,0 +1,80 @@
+2025-03-15 13:56:53,850 - youtube_shorts.coordinator - INFO - Detected 8 CPU cores
+2025-03-15 13:56:53,851 - youtube_shorts.coordinator - INFO - Setting parallel processes to 7
+2025-03-15 13:56:53,851 - youtube_shorts.coordinator - INFO - Detected platform: darwin
+2025-03-15 13:56:53,851 - youtube_shorts.coordinator - INFO - Detecting macOS GPU capabilities...
+2025-03-15 13:56:53,974 - youtube_shorts.coordinator - INFO - VideoToolbox GPU acceleration is available
+2025-03-15 13:56:54,181 - youtube_shorts.coordinator - INFO - Unknown GPU vendor
+2025-03-15 13:56:54,181 - youtube_shorts.coordinator - INFO - Created run directory: youtube_short_20250315_135653
+2025-03-15 13:56:54,181 - youtube_shorts.coordinator - INFO - Starting YouTube Shorts generation pipeline
+2025-03-15 13:56:54,181 - youtube_shorts.coordinator - INFO - System configuration: 7 cores, GPU acceleration: enabled
+2025-03-15 13:56:54,181 - youtube_shorts.content - INFO - Debug LLM output: disabled
+2025-03-15 13:56:54,502 - youtube_shorts.content - INFO - Using LLM model: deepseek-r1:latest
+2025-03-15 13:56:54,511 - httpx - INFO - HTTP Request: GET http://127.0.0.1:11434/api/tags "HTTP/1.1 200 OK"
+2025-03-15 13:56:54,511 - youtube_shorts.content - INFO - Testing model deepseek-r1:latest availability...
+2025-03-15 13:57:05,392 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-03-15 13:57:05,395 - youtube_shorts.content - INFO - Model deepseek-r1:latest is available and working.
+2025-03-15 13:57:05,456 - youtube_shorts.audio - INFO - macOS detected - adapting audio formats for compatibility
+2025-03-15 13:57:05,743 - youtube_shorts.coordinator - INFO - ========================================
+2025-03-15 13:57:05,743 - youtube_shorts.coordinator - INFO - Step 1/5: Generate health tip and script
+2025-03-15 13:57:05,743 - youtube_shorts.coordinator - INFO - ========================================
+2025-03-15 13:57:05,743 - youtube_shorts.content - INFO - Fetching health tip from health.gov API...
+2025-03-15 13:57:08,866 - youtube_shorts.content - INFO - Fetched health tip: Get Your Cholesterol Checked
+2025-03-15 13:57:08,870 - youtube_shorts.content - INFO - Generating script for health tip: Get Your Cholesterol Checked
+2025-03-15 13:57:44,004 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-03-15 13:57:44,008 - youtube_shorts.content - INFO - Successfully generated script with Ollama.
+2025-03-15 13:57:44,008 - youtube_shorts.content - INFO - Extracted 1 narration lines.
+2025-03-15 13:57:44,008 - youtube_shorts.content - INFO - Content generation completed successfully.
+2025-03-15 13:57:44,008 - youtube_shorts.coordinator - INFO - Completed step in 38.27 seconds
+2025-03-15 13:57:44,008 - youtube_shorts.coordinator - INFO - ====================================
+2025-03-15 13:57:44,008 - youtube_shorts.coordinator - INFO - Step 2/5: Generate audio from script
+2025-03-15 13:57:44,008 - youtube_shorts.coordinator - INFO - ====================================
+2025-03-15 13:57:44,008 - youtube_shorts.audio - INFO - Converting narration lines to speech...
+2025-03-15 13:57:58,706 - youtube_shorts.audio - WARNING - WARNING: Audio duration (111.96s) exceeds target of 45s.
+2025-03-15 13:57:58,706 - youtube_shorts.audio - WARNING - Audio will be slightly sped up to fit within the target duration.
+2025-03-15 13:57:58,706 - youtube_shorts.audio - INFO - Successfully generated 1 audio segments. Total duration: 111.96s
+2025-03-15 13:57:58,706 - youtube_shorts.audio - INFO - Combining 1 audio segments...
+2025-03-15 13:57:58,832 - youtube_shorts.audio - WARNING - Speed factor 0.40 is below minimum allowed value (0.5)
+2025-03-15 13:57:58,832 - youtube_shorts.audio - INFO - Applying multiple atempo filters to achieve the desired speed
+2025-03-15 13:57:59,056 - youtube_shorts.audio - INFO - Audio speed adjustment completed. New duration: 278.51s
+2025-03-15 13:57:59,059 - youtube_shorts.audio - INFO - No background music provided. Using voice-only audio.
+2025-03-15 13:58:00,362 - youtube_shorts.audio - INFO - Final audio file duration: 278.51s
+2025-03-15 13:58:00,363 - youtube_shorts.audio - INFO - Audio processing completed successfully.
+2025-03-15 13:58:00,363 - youtube_shorts.coordinator - INFO - Completed step in 16.35 seconds
+2025-03-15 13:58:00,363 - youtube_shorts.coordinator - INFO - ===============================
+2025-03-15 13:58:00,363 - youtube_shorts.coordinator - INFO - Step 3/5: Generate video frames
+2025-03-15 13:58:00,363 - youtube_shorts.coordinator - INFO - ===============================
+2025-03-15 13:58:00,363 - youtube_shorts.visual - INFO - Generating 3368 frames for 111.96 seconds at 30 fps using 7 processes
+2025-03-15 13:58:00,363 - youtube_shorts.visual - INFO - Creating default gradient background
+2025-03-15 13:58:00,389 - youtube_shorts.visual - INFO - Splitting work into 8 chunks
+2025-03-15 14:01:01,773 - youtube_shorts.visual - INFO - Completed chunk 1/8 - Generated 481 frames
+2025-03-15 14:01:01,810 - youtube_shorts.visual - INFO - Completed chunk 2/8 - Generated 1 frames
+2025-03-15 14:01:03,614 - youtube_shorts.visual - INFO - Completed chunk 3/8 - Generated 481 frames
+2025-03-15 14:01:03,830 - youtube_shorts.visual - INFO - Completed chunk 4/8 - Generated 481 frames
+2025-03-15 14:01:03,844 - youtube_shorts.visual - INFO - Completed chunk 5/8 - Generated 481 frames
+2025-03-15 14:01:04,115 - youtube_shorts.visual - INFO - Completed chunk 6/8 - Generated 481 frames
+2025-03-15 14:01:04,271 - youtube_shorts.visual - INFO - Completed chunk 7/8 - Generated 481 frames
+2025-03-15 14:01:04,331 - youtube_shorts.visual - INFO - Completed chunk 8/8 - Generated 481 frames
+2025-03-15 14:01:04,349 - youtube_shorts.visual - INFO - Generated 3368 frames in 183.96 seconds (18.31 frames/second)
+2025-03-15 14:01:04,349 - youtube_shorts.visual - INFO - Visual processing completed successfully.
+2025-03-15 14:01:04,349 - youtube_shorts.coordinator - INFO - Completed step in 183.99 seconds
+2025-03-15 14:01:04,349 - youtube_shorts.coordinator - INFO - ============================
+2025-03-15 14:01:04,349 - youtube_shorts.coordinator - INFO - Step 4/5: Create final video
+2025-03-15 14:01:04,349 - youtube_shorts.coordinator - INFO - ============================
+2025-03-15 14:01:04,351 - youtube_shorts.video - INFO - Found 3368 frame files. First frame: frame_0000.jpg, Last frame: frame_3367.jpg
+2025-03-15 14:01:04,351 - youtube_shorts.video - INFO - Creating video with frames from youtube_short_20250315_135653/frames and audio from youtube_short_20250315_135653/output/combined_audio.m4a
+2025-03-15 14:01:04,498 - youtube_shorts.video - INFO - Audio duration: 278.509 seconds
+2025-03-15 14:01:04,498 - youtube_shorts.video - INFO - Attempting to use GPU acceleration with VideoToolbox
+2025-03-15 14:01:04,645 - youtube_shorts.video - WARNING - VideoToolbox hardware acceleration not found, falling back to CPU
+2025-03-15 14:01:04,645 - youtube_shorts.video - INFO - Running FFmpeg command to generate video...
+2025-03-15 14:01:23,430 - youtube_shorts.video - INFO - Video created successfully: youtube_short_20250315_135653/output/health_tip_short.mp4 (Duration: 112.27s)
+2025-03-15 14:01:23,430 - youtube_shorts.video - WARNING - WARNING: Video duration (112.27s) exceeds 50 seconds for a YouTube Short!
+2025-03-15 14:01:23,436 - youtube_shorts.video - INFO - Copied video to current directory: /Users/prasannamattegunta/Documents/work_project/youtube_shorts/latest_health_tip.mp4
+2025-03-15 14:01:23,436 - youtube_shorts.video - INFO - Video creation completed successfully.
+2025-03-15 14:01:23,436 - youtube_shorts.coordinator - INFO - Completed step in 19.09 seconds
+2025-03-15 14:01:23,436 - youtube_shorts.coordinator - INFO - ========================================
+2025-03-15 14:01:23,436 - youtube_shorts.coordinator - INFO - Step 5/5: Upload to YouTube (if enabled)
+2025-03-15 14:01:23,436 - youtube_shorts.coordinator - INFO - ========================================
+2025-03-15 14:01:23,436 - youtube_shorts.upload - INFO - Auto-upload disabled. Skipping upload.
+2025-03-15 14:01:23,436 - youtube_shorts.coordinator - INFO - Completed step in 0.00 seconds
+2025-03-15 14:01:23,436 - youtube_shorts.coordinator - INFO - YouTube Shorts generation pipeline completed successfully in 257.69 seconds!
+2025-03-15 14:01:23,436 - youtube_shorts.coordinator - INFO - Final video saved to: /Users/prasannamattegunta/Documents/work_project/youtube_shorts/latest_health_tip.mp4

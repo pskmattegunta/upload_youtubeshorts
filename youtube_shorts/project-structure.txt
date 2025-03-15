@@ -1,0 +1,17 @@
+youtube_shorts/
+├── main.py                  # Entry point
+├── framework.py             # Main framework class
+├── config.py                # Configuration and constants
+├── coordinator.py           # Coordinator agent
+├── agents/
+│   ├── __init__.py
+│   ├── base_agent.py        # Base Agent class
+│   ├── content_agent.py     # Content generation
+│   ├── audio_agent.py       # Audio processing
+│   ├── visual_agent.py      # Visual processing
+│   ├── video_agent.py       # Video encoding
+│   └── upload_agent.py      # YouTube upload
+└── utils/
+    ├── __init__.py
+    ├── visual_helpers.py    # Visual processing helper functions
+    └── common.py            # Shared utilities
