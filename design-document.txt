@@ -1,0 +1,1212 @@
+# YouTube Shorts Automation Framework
+# Detailed Design Document
+
+## Table of Contents
+1. [Executive Summary](#1-executive-summary)
+2. [System Architecture](#2-system-architecture)
+3. [Component Details](#3-component-details)
+4. [Data Flow](#4-data-flow)
+5. [Process Flows](#5-process-flows)
+6. [Implementation Details](#6-implementation-details)
+7. [Error Handling](#7-error-handling)
+8. [Performance Optimization](#8-performance-optimization)
+9. [Testing Strategy](#9-testing-strategy)
+10. [Deployment Guide](#10-deployment-guide)
+11. [Appendix](#11-appendix)
+
+## 1. Executive Summary
+
+The YouTube Shorts Automation Framework is a modular, agent-based system designed to automate the end-to-end process of creating and uploading YouTube Shorts videos. The framework leverages Ollama with Deepseek for content generation, text-to-speech for audio creation, image processing for visual elements, and FFmpeg for video encoding.
+
+### 1.1 Key Features
+- Automated health tip generation and scripting
+- Text-to-speech conversion with timing control
+- Multi-process frame generation with animations
+- GPU-accelerated video encoding
+- YouTube authentication and upload
+- System capability auto-detection
+- Parallel processing optimization
+
+### 1.2 System Requirements
+- Python 3.8+
+- FFmpeg installed and accessible in PATH
+- Ollama server running locally (for content generation)
+- Internet connection for API calls
+- Minimum 4GB RAM recommended
+- Multi-core CPU recommended (for parallel processing)
+
+## 2. System Architecture
+
+The framework follows a modular, agent-based architecture where each component is responsible for a specific part of the workflow. The system uses a coordinator to orchestrate these agents in sequence.
+
+### 2.1 High-Level Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Main Framework                          │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────┐    │
+│  │                 Coordinator Agent                    │    │
+│  └─────────────────────────────────────────────────────┘    │
+│                           │                                  │
+│                           ▼                                  │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  │
+│  │ Content │  │  Audio  │  │ Visual  │  │  Video  │  │ Upload  │  │
+│  │  Agent  │  │  Agent  │  │  Agent  │  │  Agent  │  │  Agent  │  │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+               │            │            │            │
+               ▼            ▼            ▼            ▼
+        ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐
+        │  Ollama  │  │   Text   │  │   Image  │  │  YouTube │
+        │   API    │  │ to Speech│  │Processing│  │   API    │
+        └──────────┘  └──────────┘  └──────────┘  └──────────┘
+```
+
+### 2.2 Package Structure
+
+```
+youtube_shorts/
+├── main.py                  # Entry point
+├── framework.py             # Main framework class
+├── config.py                # Configuration and constants
+├── coordinator.py           # Coordinator agent
+├── agents/
+│   ├── __init__.py
+│   ├── base_agent.py        # Base Agent class
+│   ├── content_agent.py     # Content generation
+│   ├── audio_agent.py       # Audio processing
+│   ├── visual_agent.py      # Visual processing
+│   ├── video_agent.py       # Video encoding
+│   └── upload_agent.py      # YouTube upload
+└── utils/
+    ├── __init__.py
+    ├── visual_helpers.py    # Visual processing helper functions
+    └── common.py            # Shared utilities
+```
+
+### 2.3 Design Principles
+
+1. **Modularity**: Each agent is independent and focused on a specific task
+2. **Single Responsibility**: Each class has one primary responsibility
+3. **Encapsulation**: Implementation details are hidden within respective agents
+4. **Extensibility**: New agents can be added without modifying existing code
+5. **Configurability**: Framework behavior can be customized via configuration
+6. **Robustness**: Comprehensive error handling and fallback mechanisms
+
+## 3. Component Details
+
+### 3.1 Base Agent
+
+The `Agent` abstract base class provides the foundation for all specialized agents.
+
+**Key Responsibilities:**
+- Initialize configuration and workspace
+- Define abstract `execute()` method that all agents must implement
+- Provide a standardized reporting mechanism
+
+**Interface:**
+```python
+class Agent(ABC):
+    def __init__(self, config: Dict[str, Any], workspace: Dict[str, Any], name: str)
+    def setup(self)
+    @abstractmethod
+    async def execute(self) -> bool
+    def report(self, message: str, level: str = "info")
+```
+
+### 3.2 Content Agent
+
+The `ContentAgent` is responsible for generating health tips and scripts.
+
+**Key Responsibilities:**
+- Connect to the Ollama API
+- Fetch health tips from external sources
+- Generate scripts using LLM
+- Extract clean narration lines from scripts
+
+**Interface:**
+```python
+class ContentAgent(Agent):
+    async def fetch_health_tip(self) -> str
+    async def generate_script(self, health_tip: str) -> str
+    def extract_narration_lines(self, script_text: str) -> List[str]
+    def _clean_narration_text(self, text: str) -> str
+    async def execute(self) -> bool
+```
+
+**Process Flow:**
+1. Set up Ollama client and dependencies
+2. Fetch a random health tip from API
+3. Generate script using LLM
+4. Extract and clean narration lines
+5. Store results in workspace for other agents
+
+### 3.3 Audio Agent
+
+The `AudioAgent` is responsible for converting text to speech and processing audio.
+
+**Key Responsibilities:**
+- Generate speech from narration lines
+- Calculate timing information for synchronization
+- Combine audio segments
+- Add background music
+- Speed up audio if necessary
+
+**Interface:**
+```python
+class AudioAgent(Agent):
+    async def text_to_speech(self, narration_lines: List[str]) -> List[Dict[str, Any]]
+    async def _get_audio_duration(self, audio_file: str) -> float
+    async def _run_process(self, cmd: List[str], **kwargs) -> str
+    async def combine_audio(self, timings: List[Dict[str, Any]], bg_music_file: Optional[str] = None) -> str
+    async def execute(self) -> bool
+```
+
+**Process Flow:**
+1. Set up audio processing dependencies
+2. Convert each narration line to speech
+3. Calculate timing for each segment
+4. Combine audio segments
+5. Apply speed adjustment if needed
+6. Add background music if available
+7. Store final audio in workspace
+
+### 3.4 Visual Agent
+
+The `VisualAgent` is responsible for generating video frames with text overlays.
+
+**Key Responsibilities:**
+- Prepare background images
+- Create text frames with animations
+- Generate all video frames
+- Optimize frame generation with parallel processing
+
+**Interface:**
+```python
+class VisualAgent(Agent):
+    async def prepare_background(self, background_image: Optional[str] = None) -> 'Image.Image'
+    def _create_gradient_background(self) -> 'Image.Image'
+    def _get_available_font_paths(self) -> List[str]
+    async def generate_frames(self, bg_image: Optional[str] = None) -> int
+    async def execute(self) -> bool
+```
+
+**Process Flow:**
+1. Set up image processing dependencies
+2. Prepare background image
+3. Split work into chunks for parallel processing
+4. Generate frames in parallel
+5. Store frame information in workspace
+
+### 3.5 Video Agent
+
+The `VideoAgent` is responsible for combining frames and audio into the final video.
+
+**Key Responsibilities:**
+- Encode video from frames
+- Add audio track
+- Optimize encoding with GPU acceleration if available
+- Provide fallback methods if primary encoding fails
+
+**Interface:**
+```python
+class VideoAgent(Agent):
+    async def _get_video_duration(self, video_file: str) -> float
+    async def _get_audio_duration(self, audio_file) -> float
+    async def create_video(self) -> bool
+    async def _create_video_fallback(self, frames_dir, audio_file, fps, frame_files) -> bool
+    async def execute(self) -> bool
+```
+
+**Process Flow:**
+1. Set up video encoding environment
+2. Check input frames and audio
+3. Try GPU-accelerated encoding if available
+4. Fall back to CPU encoding if needed
+5. Save final video
+6. Store video information in workspace
+
+### 3.6 Upload Agent
+
+The `UploadAgent` is responsible for YouTube authentication and video upload.
+
+**Key Responsibilities:**
+- Handle OAuth 2.0 authentication with YouTube
+- Manage credentials storage and refresh
+- Upload videos to YouTube
+- Provide video metadata
+
+**Interface:**
+```python
+class UploadAgent(Agent):
+    def _get_saved_credentials(self) -> Optional[object]
+    def _save_credentials(self, credentials) -> bool
+    async def setup_youtube_oauth(self, save_creds: bool = True) -> Optional[object]
+    async def upload_video(self, video_path: str, title: str, description: str, tags: List[str] = None) -> Optional[str]
+    async def execute(self) -> bool
+```
+
+**Process Flow:**
+1. Set up YouTube API client
+2. Check for saved credentials
+3. Refresh credentials if needed
+4. Construct video metadata
+5. Upload video to YouTube
+6. Store video URL in workspace
+
+### 3.7 Coordinator Agent
+
+The `CoordinatorAgent` is responsible for orchestrating the entire workflow.
+
+**Key Responsibilities:**
+- Detect system capabilities
+- Create and run all agents in sequence
+- Track progress and timing
+- Report results
+
+**Interface:**
+```python
+class CoordinatorAgent(Agent):
+    def detect_system_capabilities(self)
+    def create_agents(self)
+    async def execute(self) -> bool
+```
+
+**Process Flow:**
+1. Set up run directory and environment
+2. Detect system capabilities (CPU cores, GPU)
+3. Create all agents
+4. Run each agent in sequence
+5. Track and report progress
+6. Report final results
+
+## 4. Data Flow
+
+### 4.1 Workspace Data Flow
+
+The `workspace` dictionary serves as a shared data store between agents. Each agent can read from and write to this workspace.
+
+```
+┌─────────────┐            ┌─────────────┐            ┌─────────────┐
+│ContentAgent │            │ AudioAgent  │            │ VisualAgent │
+└─────────────┘            └─────────────┘            └─────────────┘
+       │                          │                          │
+       ▼                          │                          │
+┌─────────────┐                   │                          │
+│health_tip   │                   │                          │
+│script       │                   │                          │
+│narration_...│                   │                          │
+└─────────────┘                   │                          │
+       │                          ▼                          │
+       └─────────────────► ┌─────────────┐                   │
+                          │audio_timings │                   │
+                          │combined_audio│                   │
+                          └─────────────┘                   │
+                                  │                          ▼
+                                  └─────────────────► ┌─────────────┐
+                                                     │num_frames    │
+                                                     │frames_dir    │
+                                                     │frame_rate    │
+                                                     └─────────────┘
+                                                            │
+                                                            ▼
+                                                     ┌─────────────┐
+                                                     │ VideoAgent  │
+                                                     └─────────────┘
+                                                            │
+                                                            ▼
+                                                     ┌─────────────┐
+                                                     │output_video │
+                                                     │final_video  │
+                                                     │video_duration│
+                                                     └─────────────┘
+                                                            │
+                                                            ▼
+                                                     ┌─────────────┐
+                                                     │ UploadAgent │
+                                                     └─────────────┘
+                                                            │
+                                                            ▼
+                                                     ┌─────────────┐
+                                                     │youtube_vid_id│
+                                                     │youtube_vid_url│
+                                                     └─────────────┘
+```
+
+### 4.2 File System Data Flow
+
+The framework creates a directory structure for each run:
+
+```
+youtube_short_YYYYMMDD_HHMMSS/
+├── frames/                   # Generated video frames
+│   ├── frame_0000.jpg
+│   ├── frame_0001.jpg
+│   └── ...
+├── audio/                    # Audio files
+│   ├── segment_0.mp3
+│   ├── segment_1.mp3
+│   ├── ...
+│   ├── voice_only.wav
+│   └── speedup_audio.wav
+├── output/                   # Output files
+│   └── health_tip_short.mp4
+└── assets/                   # Additional assets
+```
+
+## 5. Process Flows
+
+### 5.1 Complete Pipeline Flow
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                          Start Framework                                 │
+└───────────────────────────────────┬─────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      Detect System Capabilities                          │
+│                                                                         │
+│  - CPU cores available                                                  │
+│  - GPU acceleration support                                             │
+│  - Platform-specific adaptations                                        │
+└───────────────────────────────────┬─────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       ContentAgent (1-2 minutes)                         │
+│                                                                         │
+│  - Fetch health tip from API                                            │
+│  - Generate script using Ollama                                         │
+│  - Extract narration lines                                              │
+└───────────────────────────────────┬─────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       AudioAgent (2-5 minutes)                           │
+│                                                                         │
+│  - Generate speech for each line                                        │
+│  - Calculate timing information                                         │
+│  - Speed up audio if needed                                             │
+│  - Add background music                                                 │
+└───────────────────────────────────┬─────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      VisualAgent (5-15 minutes)                          │
+│                                                                         │
+│  - Prepare background image                                             │
+│  - Generate frames in parallel                                          │
+│  - Apply text animations                                                │
+└───────────────────────────────────┬─────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       VideoAgent (1-3 minutes)                           │
+│                                                                         │
+│  - Combine frames into video                                            │
+│  - Add audio track                                                      │
+│  - Optimize with GPU if available                                       │
+└───────────────────────────────────┬─────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                       UploadAgent (1-5 minutes)                          │
+│                                                                         │
+│  - Authenticate with YouTube                                            │
+│  - Upload video with metadata                                           │
+│  - Store video URL                                                      │
+└───────────────────────────────────┬─────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                            Complete                                      │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.2 ContentAgent Detailed Flow
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                      ContentAgent Execution Start                       │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                     Check Ollama Availability                           │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                  ┌────────────────┴────────────────┐
+                  │                                 │
+                  ▼                                 ▼
+┌────────────────────────────┐      ┌─────────────────────────────────────┐
+│      Ollama Available      │      │          Ollama Unavailable         │
+└─────────────┬──────────────┘      └────────────────────┬────────────────┘
+              │                                          │
+              ▼                                          │
+┌────────────────────────────┐                           │
+│    Check Model Available   │                           │
+└─────────────┬──────────────┘                           │
+              │                                          │
+  ┌───────────┴───────────┐                              │
+  │                       │                              │
+  ▼                       ▼                              │
+┌──────────────┐  ┌───────────────┐                      │
+│Model Available│  │Model Missing  │                      │
+└───────┬──────┘  └───────┬───────┘                      │
+        │                 │                              │
+        │                 └──────────────┐               │
+        │                                ▼               ▼
+        │                    ┌───────────────────────────────────────┐
+        │                    │    Return Error and Exit              │
+        │                    └───────────────────────────────────────┘
+        │
+        ▼
+┌─────────────────────────────────────────────────┐   
+│              Fetch Health Tip                    │  [30 seconds - 1 minute]
+│                                                 │
+│  - Try health.gov API                           │
+│  - Fall back to default if API fails            │
+└─────────────────────────┬───────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────┐
+│             Generate Script                      │  [30 seconds - 1 minute]
+│                                                 │
+│  - Create prompt with health tip                │
+│  - Send to Ollama Deepseek model                │
+│  - Process and clean response                   │
+└─────────────────────────┬───────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────┐
+│           Extract Narration Lines               │  [1-5 seconds]
+│                                                 │
+│  - Parse script into individual lines           │
+│  - Clean each line (remove markup, etc.)        │
+│  - Store in workspace                           │
+└─────────────────────────┬───────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────┐
+│             ContentAgent Complete               │
+└─────────────────────────────────────────────────┘
+```
+
+### 5.3 AudioAgent Detailed Flow
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                      AudioAgent Execution Start                         │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                    Check Required Dependencies                          │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│         Process Each Narration Line with Text-to-Speech                 │
+│                                                                         │
+│  - For each line:                                                       │  [1-3 minutes total]
+│    - Convert to speech using gTTS                                       │
+│    - Get audio duration                                                 │
+│    - Store timing information                                           │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                    Check Total Audio Duration                           │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                 ┌─────────────────┴───────────────────┐
+                 │                                     │
+                 ▼                                     ▼
+┌─────────────────────────────┐         ┌─────────────────────────────────┐
+│  Duration <= MAX_DURATION   │         │    Duration > MAX_DURATION      │
+└─────────────┬───────────────┘         └────────────────┬────────────────┘
+              │                                          │
+              │                                          ▼
+              │                         ┌─────────────────────────────────┐
+              │                         │       Speed Up Audio             │  [30-60 seconds]
+              │                         │                                 │
+              │                         │  - Calculate speed factor       │
+              │                         │  - Apply atempo filter          │
+              │                         │  - Handle multiple applications │
+              │                         │    if speed factor < 0.5        │
+              │                         └────────────────┬────────────────┘
+              │                                          │
+              └──────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                       Check Background Music                            │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                 ┌─────────────────┴───────────────────┐
+                 │                                     │
+                 ▼                                     ▼
+┌─────────────────────────────┐         ┌─────────────────────────────────┐
+│   Background Music Found    │         │   No Background Music           │
+└─────────────┬───────────────┘         └────────────────┬────────────────┘
+              │                                          │
+              ▼                                          │
+┌─────────────────────────────┐                          │
+│      Mix Audio Tracks       │  [30-60 seconds]          │
+│                             │                          │
+│  - Load voice-only audio    │                          │
+│  - Load background music    │                          │
+│  - Adjust music volume      │                          │
+│  - Overlay tracks           │                          │
+└─────────────┬───────────────┘                          │
+              │                                          │
+              └──────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   Export Final Audio File                               │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                       AudioAgent Complete                               │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.4 VisualAgent Detailed Flow
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                     VisualAgent Execution Start                         │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│               Check Required Dependencies and Data                      │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                  Prepare Background Image                               │
+│                                                                         │
+│  - Try to load specified background                                     │  [5-10 seconds]
+│  - Fall back to gradient if not found                                   │
+│  - Apply processing (resize, blur, darken)                              │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   Initialize Parallel Processing                         │
+│                                                                         │
+│  - Determine number of processes                                        │  [1-5 seconds]
+│  - Split frames into chunks                                             │
+│  - Save background to temp file                                         │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                  Generate Frames in Parallel                            │
+│                                                                         │
+│  - Create process pool                                                  │  [5-15 minutes]
+│  - For each chunk:                                                      │
+│    - Process frames in separate processes                               │
+│    - Create text overlays with animations                               │
+│    - Save frames to disk                                                │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                  Verify and Clean Up                                    │
+│                                                                         │
+│  - Count generated frames                                               │  [1-5 seconds]
+│  - Report statistics                                                    │
+│  - Clean up temporary files                                             │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                     VisualAgent Complete                                │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.5 VideoAgent Detailed Flow
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                     VideoAgent Execution Start                          │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│               Check Required Files and Dependencies                     │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                  Detect GPU Acceleration                                │
+│                                                                         │
+│  - Check platform (macOS)                                               │  [1-5 seconds]
+│  - Test for VideoToolbox support                                        │
+│  - Determine encoding parameters                                        │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                 ┌────────────────┴────────────────┐
+                 │                                 │
+                 ▼                                 ▼
+┌─────────────────────────────┐       ┌───────────────────────────────────┐
+│     GPU Available          │       │          CPU Only                  │
+└─────────────┬───────────────┘       └───────────────┬───────────────────┘
+              │                                       │
+              ▼                                       ▼
+┌─────────────────────────────┐       ┌───────────────────────────────────┐
+│  Run FFmpeg with GPU Accel  │       │    Run FFmpeg with CPU Only       │
+└─────────────┬───────────────┘       └───────────────┬───────────────────┘
+              │                                       │
+              └───────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                 Check Encoding Success                                  │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                 ┌────────────────┴────────────────┐
+                 │                                 │
+                 ▼                                 ▼
+┌─────────────────────────────┐       ┌───────────────────────────────────┐
+│    Encoding Successful      │       │      Encoding Failed              │
+└─────────────┬───────────────┘       └───────────────┬───────────────────┘
+              │                                       │
+              │                                       ▼
+              │                       ┌───────────────────────────────────┐
+              │                       │   Try Fallback Methods            │
+              │                       │                                   │
+              │                       │ - Try concat file list approach   │
+              │                       │ - Try single frame loop approach  │
+              │                       └───────────────┬───────────────────┘
+              │                                       │
+              └───────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                   Verify Final Video                                    │
+│                                                                         │
+│  - Check file exists                                                    │  [1-5 seconds]
+│  - Get video duration                                                   │
+│  - Verify duration is appropriate for Shorts                            │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                 Create Final Copy in Current Directory                  │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                      VideoAgent Complete                                │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 5.6 UploadAgent Detailed Flow (if enabled)
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                     UploadAgent Execution Start                         │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                                   ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                Check if Auto-Upload Enabled                             │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                   │
+                 ┌────────────────┴────────────────┐
+                 │                                 │
+                 ▼                                 ▼
+┌─────────────────────────────┐       ┌───────────────────────────────────┐
+│     Auto-Upload Enabled     │       │     Auto-Upload Disabled          │
+└─────────────┬───────────────┘       └───────────────┬───────────────────┘
+              │                                       │
+              ▼                                       │
+┌─────────────────────────────┐                       │
+│  Check API Dependencies     │                       │
+└─────────────┬───────────────┘                       │
+              │                                       │
+              ▼                                       │
+┌─────────────────────────────┐                       │
+│   Check OAuth Credentials   │                       │
+└─────────────┬───────────────┘                       │
+              │                                       │
+  ┌───────────┴───────────┐                           │
+  │                       │                           │
+  ▼                       ▼                           │
+┌────────────┐    ┌───────────────┐                   │
+│ Valid Creds│    │ Invalid Creds │                   │
+└──────┬─────┘    └───────┬───────┘                   │
+       │                  │                           │
+       │                  ▼                           │
+       │         ┌────────────────────┐               │
+       │         │ Try Refresh Token  │               │
+       │         └────────┬───────────┘               │
+       │                  │                           │
+       │     ┌────────────┴──────────┐                │
+       │     │                       │                │
+       │     ▼                       ▼                │
+       │  ┌────────────┐     ┌────────────────┐       │
+       │  │ Refreshed  │     │ Cannot Refresh │       │
+       │  └──────┬─────┘     └────────┬───────┘       │
+       │         │                    │               │
+       │         │                    ▼               │
+       │         │           ┌────────────────┐       │
+       │         │           │  Return Error  │       │
+       │         │           └────────────────┘       │
+       └─────────┘                                    │
+              │                                       │
+              ▼                                       │
+┌─────────────────────────────┐                       │
+│    Prepare Video Metadata   │                       │
+│                             │                       │
+│  - Create title             │                       │
+│  - Create description       │                       │
+│  - Add tags                 │                       │
+└─────────────┬───────────────┘                       │
+              │                                       │
+              ▼                                       │
+┌─────────────────────────────┐                       │
+│     Upload Video to YouTube │  [1-5 minutes]         │
+│                             │                       │
+│  - Create upload request    │                       │
+│  - Monitor progress         │                       │
+│  - Get video ID and URL     │                       │
+└─────────────┬───────────────┘                       │
+              │                                       │
+              └───────────────────────────────────────┘
+                             │
+                             ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                      UploadAgent Complete                               │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+## 6. Implementation Details
+
+### 6.1 Configuration System
+
+The framework uses a layered configuration approach:
+
+1. Default configuration defined in `config.py`
+2. Configuration file (JSON/YAML) if provided
+3. Command-line arguments that override file settings
+
+**Configuration Parameters:**
+- `llm_model`: Ollama model to use for content generation
+- `max_duration`: Maximum video duration in seconds
+- `video_width`: Width of video frames in pixels
+- `video_height`: Height of video frames in pixels
+- `fps`: Frames per second for video
+- `parallel_processes`: Number of CPU cores to use (auto-detected if None)
+- `output_dir`: Directory for output files
+- `youtube_token_path`: Path to save OAuth tokens
+- `default_background`: Path to default background image
+- `default_music`: Path to default background music
+- `auto_upload`: Whether to automatically upload to YouTube
+- `use_gpu`: Whether to use GPU acceleration (auto-detected)
+- `quality`: Video quality setting (low, medium, high)
+- `logging_level`: Level of logging verbosity
+- `debug_llm_output`: Whether to print raw LLM output
+
+### 6.2 Agent Communication
+
+Agents communicate through the shared `workspace` dictionary:
+
+**Key Workspace Fields:**
+- `run_dir`: The directory for the current run
+- `health_tip`: Generated health tip
+- `script`: Generated script
+- `narration_lines`: Extracted narration lines
+- `audio_timings`: Timing information for audio segments
+- `combined_audio_file`: Path to the combined audio file
+- `num_frames`: Number of generated frames
+- `frames_dir`: Directory containing frames
+- `frame_rate`: Frames per second
+- `output_video`: Path to the output video
+- `final_video`: Path to the final copy in the current directory
+- `video_duration`: Duration of the final video
+- `youtube_video_id`: YouTube video ID (if uploaded)
+- `youtube_video_url`: YouTube video URL (if uploaded)
+
+### 6.3 Parallel Processing Implementation
+
+Visual frame generation uses parallel processing to speed up the most time-consuming part of the pipeline:
+
+1. The job is split into chunks based on the number of available CPU cores
+2. Each chunk is processed by a separate worker process
+3. Worker functions are defined at the module level to ensure they can be pickled
+4. Background image and other necessary data are passed to workers
+5. Results are collected and combined
+
+```python
+def generate_frame_chunk(chunk_info: Tuple) -> int:
+    """Worker function to generate a chunk of frames."""
+    # Implementation details...
+    return generated_count
+
+# Inside VisualAgent.generate_frames method:
+ctx = multiprocessing.get_context('spawn')
+with ctx.Pool(processes=num_processes) as pool:
+    results = []
+    for i, result in enumerate(pool.imap_unordered(generate_frame_chunk, chunks)):
+        results.append(result)
+```
+
+### 6.4 GPU Acceleration
+
+Video encoding uses GPU acceleration on supported platforms:
+
+1. Detect platform capabilities during startup
+2. On macOS, check for VideoToolbox support
+3. If available, use GPU-accelerated H.264 encoding
+4. Fall back to CPU encoding if GPU acceleration fails
+
+```python
+# Detection:
+if "videotoolbox" in output.lower():
+    self.report("VideoToolbox hardware acceleration is available", "info")
+    use_gpu = True
+
+# Usage with FFmpeg:
+if use_gpu:
+    cmd.extend([
+        "-hwaccel", "videotoolbox",
+        "-hwaccel_output_format", "videotoolbox_vld"
+    ])
+    # Later in command:
+    cmd.extend([
+        "-c:v", "h264_videotoolbox",
+        "-b:v", "5M",
+        "-allow_sw", "1"
+    ])
+```
+
+## 7. Error Handling
+
+### 7.1 Dependency Management
+
+The framework automatically handles missing Python dependencies:
+
+1. Try to import required packages
+2. If import fails, install packages using pip
+3. Retry import after installation
+
+```python
+try:
+    from gtts import gTTS
+    self.gtts_available = True
+except ImportError:
+    self.gtts_available = False
+    self.report("gTTS package not installed. Running pip install gtts...", "warning")
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "gtts"])
+        from gtts import gTTS
+        self.gtts_available = True
+    except Exception as e:
+        self.report(f"Failed to install gTTS package: {e}", "error")
+```
+
+### 7.2 Fallback Mechanisms
+
+The framework includes fallback options for various failure points:
+
+1. **Content Generation**:
+   - If Ollama is unavailable, use mock content
+   - If health API fails, use default health tips
+
+2. **Audio Processing**:
+   - If TTS fails, abort with clear error
+   - If audio speed adjustment fails, try alternative approach
+
+3. **Video Encoding**:
+   - If primary encoding fails, try alternate methods
+   - If GPU acceleration fails, fall back to CPU
+
+```python
+if process.returncode != 0:
+    self.report(f"Error creating video with standard pattern: {stderr_text}", "error")
+    if use_gpu:
+        self.report("GPU acceleration failed, trying again without GPU...", "warning")
+        return await self._create_video_fallback(frames_dir, audio_file, fps, frame_files)
+    else:
+        return await self._create_video_fallback(frames_dir, audio_file, fps, frame_files)
+```
+
+### 7.3 Reporting and Logging
+
+The framework uses comprehensive logging:
+
+1. Console output for immediate feedback
+2. Log file for persistent record
+3. Different log levels (DEBUG, INFO, WARNING, ERROR)
+4. Detailed error messages with tracebacks
+5. Progress tracking in the workspace
+
+```python
+def report(self, message: str, level: str = "info"):
+    """Log a message and update the workspace."""
+    # Log to console/file
+    if level == "debug":
+        self.logger.debug(message)
+    elif level == "info":
+        self.logger.info(message)
+    # etc...
+    
+    # Update workspace progress
+    if "progress" not in self.workspace:
+        self.workspace["progress"] = {}
+    
+    if self.name not in self.workspace["progress"]:
+        self.workspace["progress"][self.name] = []
+    
+    self.workspace["progress"][self.name].append({
+        "timestamp": datetime.datetime.now().isoformat(),
+        "message": message,
+        "level": level
+    })
+```
+
+## 8. Performance Optimization
+
+### 8.1 Speed Optimizations
+
+1. **Parallel Processing**:
+   - Frame generation across multiple CPU cores
+   - Chunking for balanced workload
+
+2. **GPU Acceleration**:
+   - Hardware-accelerated video encoding
+   - Platform-specific optimizations
+
+3. **Memory Efficiency**:
+   - Process frames sequentially to avoid memory exhaustion
+   - Clean up temporary files during processing
+
+4. **I/O Optimization**:
+   - Minimize disk reads/writes
+   - Batch processing where possible
+
+### 8.2 Performance Metrics
+
+| Component         | Task                     | Time (min) | Factors Affecting Speed                      |
+|-------------------|--------------------------|------------|---------------------------------------------|
+| ContentAgent      | API and LLM Generation   | 1-2        | Internet speed, Ollama model, prompt length |
+| AudioAgent        | Text-to-Speech           | 2-5        | Number of lines, internet speed             |
+| VisualAgent       | Frame Generation         | 5-15       | Number of frames, CPU cores, frame complexity|
+| VideoAgent        | Video Encoding           | 1-3        | GPU availability, video length, quality     |
+| UploadAgent       | YouTube Upload           | 1-5        | Internet speed, video size                  |
+| **Total**         | **Complete Pipeline**    | **10-30**  | **Above factors combined**                  |
+
+### 8.3 Optimizing Visual Processing
+
+The most time-consuming part of the pipeline is the frame generation. Optimizations include:
+
+1. **Parallel Processing**: Split work across CPU cores
+2. **Simplified Animations**: Use simpler animations in worker processes
+3. **Image Caching**: Reuse background image
+4. **Selective Processing**: Only redraw changing elements
+5. **Reduced Quality**: Adjust JPEG quality for faster encoding
+
+## 9. Testing Strategy
+
+### 9.1 Unit Testing
+
+Each agent and utility function should have corresponding unit tests:
+
+```python
+def test_content_agent_extract_narration_lines():
+    agent = ContentAgent({}, {}, "test")
+    script = "Narrator: Line 1\n\nNarrator: Line 2\n\nNarrator: Line 3"
+    lines = agent.extract_narration_lines(script)
+    assert len(lines) == 3
+    assert lines[0] == "Line 1"
+```
+
+### 9.2 Integration Testing
+
+Test agent interactions and data flow:
+
+```python
+async def test_content_to_audio_flow():
+    workspace = {}
+    config = DEFAULT_CONFIG.copy()
+    
+    content_agent = ContentAgent(config, workspace, "content")
+    await content_agent.execute()
+    
+    assert "narration_lines" in workspace
+    assert len(workspace["narration_lines"]) > 0
+    
+    audio_agent = AudioAgent(config, workspace, "audio")
+    result = await audio_agent.execute()
+    
+    assert result is True
+    assert "combined_audio_file" in workspace
+    assert os.path.exists(workspace["combined_audio_file"])
+```
+
+### 9.3 System Testing
+
+Test complete pipeline with various configurations:
+
+```python
+async def test_full_pipeline_no_upload():
+    config = {
+        "auto_upload": False,
+        "debug_llm_output": True,
+        "max_duration": 30
+    }
+    
+    framework = YouTubeShortsFramework(config)
+    result = await framework.run()
+    
+    assert result is True
+    assert os.path.exists(os.path.join(os.getcwd(), "latest_health_tip.mp4"))
+```
+
+### 9.4 Performance Testing
+
+Measure execution time and resource usage:
+
+```python
+async def test_visual_agent_performance():
+    import time
+    
+    workspace = {"narration_lines": ["Line 1", "Line 2", "Line 3"]}
+    workspace["run_dir"] = "test_run"
+    workspace["audio_timings"] = [
+        {"line": "Line 1", "start_time": 0, "duration": 5, "end_time": 5},
+        {"line": "Line 2", "start_time": 5, "duration": 5, "end_time": 10},
+        {"line": "Line 3", "start_time": 10, "duration": 5, "end_time": 15}
+    ]
+    
+    # Test with different numbers of processes
+    for processes in [1, 2, 4, 8]:
+        config = DEFAULT_CONFIG.copy()
+        config["parallel_processes"] = processes
+        
+        agent = VisualAgent(config, workspace, "visual")
+        
+        start_time = time.time()
+        await agent.execute()
+        end_time = time.time()
+        
+        print(f"Processes: {processes}, Time: {end_time - start_time:.2f}s")
+```
+
+## 10. Deployment Guide
+
+### 10.1 Requirements
+
+- Python 3.8 or higher
+- FFmpeg installed and in PATH
+- Ollama server running locally
+- Internet connection
+- YouTube API credentials (if uploading)
+
+### 10.2 Installation Steps
+
+1. **Clone repository**:
+   ```bash
+   git clone https://github.com/yourusername/youtube-shorts-automation.git
+   cd youtube-shorts-automation
+   ```
+
+2. **Create virtual environment** (optional but recommended):
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Pull Ollama model**:
+   ```bash
+   ollama pull deepseek-r1:latest
+   ```
+
+5. **Setup YouTube API** (if using upload feature):
+   ```bash
+   python main.py --setup
+   ```
+
+### 10.3 Usage Examples
+
+Simple usage:
+```bash
+python main.py
+```
+
+With custom background and music:
+```bash
+python main.py -b my_background.jpg -m my_music.mp3
+```
+
+With YouTube upload:
+```bash
+python main.py -u
+```
+
+With custom configuration file:
+```bash
+python main.py -c config.yaml
+```
+
+### 10.4 Troubleshooting
+
+**Error**: "Ollama module not installed"
+**Solution**: Make sure Ollama is installed and available in your Python environment
+
+**Error**: "Model not found"
+**Solution**: Run `ollama pull deepseek-r1:latest` to download the required model
+
+**Error**: "FFmpeg not found"
+**Solution**: Install FFmpeg and ensure it's in your system PATH
+
+**Error**: "Can't pickle local object"
+**Solution**: Ensure you're using the updated code with top-level helper functions
+
+**Error**: "No valid credentials for YouTube upload"
+**Solution**: Run `python main.py --setup` to set up YouTube API credentials
+
+## 11. Appendix
+
+### 11.1 Technologies Used
+
+- **Python**: Core programming language
+- **Ollama**: Local LLM deployment 
+- **Deepseek**: LLM model for content generation
+- **FFmpeg**: Audio and video processing
+- **gTTS**: Google Text-to-Speech
+- **PIL/Pillow**: Image processing
+- **multiprocessing**: Parallel processing
+- **YouTube API**: Video upload
+
+### 11.2 Resources
+
+- [Ollama Documentation](https://github.com/ollama/ollama)
+- [FFmpeg Documentation](https://ffmpeg.org/documentation.html)
+- [YouTube API Documentation](https://developers.google.com/youtube/v3)
+- [gTTS Documentation](https://gtts.readthedocs.io/)
+- [Pillow Documentation](https://pillow.readthedocs.io/)
+
+### 11.3 Future Enhancements
+
+- Support for additional content types beyond health tips
+- Text/subtitle overlay options
+- More animation types and visual effects
+- Background music selection and mixing
+- Analytics integration for tracking video performance
+- Batch processing for multiple videos
+- Web interface for configuration and monitoring
